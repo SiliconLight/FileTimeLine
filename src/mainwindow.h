@@ -23,6 +23,9 @@ private slots:
     void chooseDirectory();
     void loadDirectory(const QString &path);
 
+protected:
+    bool eventFilter(QObject *obj, QEvent *event) override;
+
 private:
     double sliderToZoom(int value) const;
     int    zoomToSlider(double zoom) const;

@@ -29,6 +29,11 @@ TRANSLATIONS += translations/fileTimeline_zh_CN.ts
 CONFIG += lrelease
 CONFIG += embed_translations
 
+# 静态 Qt 构建时连 MinGW 运行库也静态化，产出免安装单 exe
+static {
+    QMAKE_LFLAGS += -static -static-libgcc -static-libstdc++
+}
+
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin

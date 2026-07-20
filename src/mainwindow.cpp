@@ -10,6 +10,7 @@
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLineEdit>
 #include <QLocale>
 #include <QPushButton>
 #include <QSettings>
@@ -75,8 +76,18 @@ MainWindow::MainWindow(QWidget *parent)
     m_countLabel->setObjectName("countLabel");
 
     m_langCombo = new QComboBox;
+    m_langCombo->setObjectName("langCombo");
+    m_langCombo->setMinimumWidth(110); // 保证 "English" 完整显示，否则输入框会横滚切掉首字符
     m_langCombo->addItem(QStringLiteral("中文"), QStringLiteral("zh_CN"));
     m_langCombo->addItem(QStringLiteral("English"), QStringLiteral("en"));
+    // 文字居中：收起态用只读 lineEdit 居中，弹出项用 TextAlignmentRole
+    m_langCombo->setEditable(true);
+    m_langCombo->lineEdit()->setReadOnly(true);
+    m_langCombo->lineEdit()->setAlignment(Qt::AlignCenter);
+    m_langCombo->lineEdit()->setCursor(Qt::ArrowCursor); // 不显示文本输入光标
+    m_langCombo->lineEdit()->installEventFilter(this);   // 点击任意位置都展开弹窗
+    for (int i = 0; i < m_langCombo->count(); ++i)
+        m_langCombo->setItemData(i, Qt::AlignCenter, Qt::TextAlignmentRole);
 
     barLayout->addWidget(m_openBtn);
     barLayout->addWidget(m_pathLabel, 1);
@@ -156,6 +167,7 @@ MainWindow::MainWindow(QWidget *parent)
         QComboBox::drop-down { border: none; width: 22px; }
         QComboBox QAbstractItemView { background: #ffffff; border: 1px solid #d9deeb;
             selection-background-color: #eef1ff; selection-color: #4c5bd5; }
+        QComboBox#langCombo QLineEdit { qproperty-alignment: AlignCenter; }
         QSlider::groove:horizontal { height: 6px; background: #e2e6f2; border-radius: 3px; }
         QSlider::sub-page:horizontal { background: #6c6cf2; border-radius: 3px; }
         QSlider::handle:horizontal { width: 16px; height: 16px; margin: -6px 0;
@@ -236,6 +248,16 @@ void MainWindow::refreshStatusBar()
             .arg(sorted.first().modified.toString("yyyy-MM-dd HH:mm:ss"),
                  sorted.last().modified.toString("yyyy-MM-dd HH:mm:ss")));
     }
+}
+
+bool MainWindow::eventFilter(QObject *obj, QEvent *event)
+{
+    // 可编辑态的下拉框默认只有点箭头才展开；让点击按钮任意位置都弹出
+    if (obj == m_langCombo->lineEdit() && event->type() == QEvent::MouseButtonPress) {
+        m_langCombo->showPopup();
+        return true;
+    }
+    return QMainWindow::eventFilter(obj, event);
 }
 
 double MainWindow::sliderToZoom(int value) const
