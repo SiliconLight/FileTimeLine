@@ -1,0 +1,22 @@
+# Qt Creator 本机配置
+*.pro.user
+*.pro.user.*
+
+# 构建目录与产物
+build-*/
+Makefile*
+*.o
+*.obj
+*.exe
+release/
+debug/
+.qmake.stash
+
+# moc / uic / qrc 中间文件
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+
+# 系统杂项
+Thumbs.db
+.DS_Store
