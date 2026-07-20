@@ -274,7 +274,7 @@ void TimelineWidget::paintEvent(QPaintEvent *)
         f.setPointSize(13);
         p.setFont(f);
         p.drawText(rect(), Qt::AlignCenter,
-                   QStringLiteral("点击左上角「选择目录」，把一个文件夹铺到时间线上"));
+                   tr("Click \"Open Folder\" at the top left to lay a folder out on the timeline"));
         return;
     }
 
@@ -331,7 +331,7 @@ void TimelineWidget::paintEvent(QPaintEvent *)
         p.setPen(QPen(QColor(239, 83, 80, 170), 1, Qt::DashLine));
         p.drawLine(QPointF(x, 10), QPointF(x, height() - 34));
         p.setPen(QColor(239, 83, 80, 220));
-        p.drawText(QRectF(x + 4, 12, 60, 18), QStringLiteral("现在"));
+        p.drawText(QRectF(x + 4, 12, 60, 18), tr("Now"));
     }
 
     // ---------- 可见文件范围（二分查找） ----------
@@ -530,9 +530,9 @@ void TimelineWidget::updateHover(const QPoint &pos)
             QToolTip::hideText(); // 缩略图模式下详情由悬停预览框展示
         } else {
             QToolTip::showText(mapToGlobal(pos),
-                QStringLiteral("<b>%1</b><br/>"
-                               "<span style='color:#8a90a8'>%2</span><br/>"
-                               "修改时间：%3<br/>大小：%4")
+                tr("<b>%1</b><br/>"
+                   "<span style='color:#8a90a8'>%2</span><br/>"
+                   "Modified: %3<br/>Size: %4")
                     .arg(f.name.toHtmlEscaped(), f.path.toHtmlEscaped(),
                          f.modified.toString("yyyy-MM-dd HH:mm:ss.zzz"), sizeString(f.size)),
                 this);
@@ -687,7 +687,7 @@ void TimelineWidget::drawHoverPreview(QPainter &p, const FileItem &f)
     if (!pv) {
         p.setPen(kHintText);
         p.drawText(QRect(x + 8, y + 8, imgSize.width(), imgSize.height()),
-                   Qt::AlignCenter, QStringLiteral("加载中…"));
+                   Qt::AlignCenter, tr("Loading…"));
     } else {
         p.drawPixmap(QRect(x + 8, y + 8, imgSize.width(), imgSize.height()), *pv);
     }

@@ -10,7 +10,9 @@
 #include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLocale>
 #include <QPushButton>
+#include <QSettings>
 #include <QSlider>
 #include <QStandardPaths>
 #include <QStatusBar>
@@ -28,7 +30,6 @@ constexpr int    kSliderSteps   = 1000;
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    setWindowTitle(QStringLiteral("文件时间线"));
     resize(1200, 680);
 
     // ---------- 顶部工具条 ----------
@@ -38,59 +39,58 @@ MainWindow::MainWindow(QWidget *parent)
     barLayout->setContentsMargins(14, 10, 14, 10);
     barLayout->setSpacing(10);
 
-    auto *openBtn = new QPushButton(QStringLiteral("选择目录"));
-    openBtn->setObjectName("primaryBtn");
+    m_openBtn = new QPushButton;
+    m_openBtn->setObjectName("primaryBtn");
 
-    m_pathLabel = new QLabel(QStringLiteral("未选择目录"));
+    m_pathLabel = new QLabel;
     m_pathLabel->setObjectName("pathLabel");
     m_pathLabel->setMinimumWidth(160);
     m_pathLabel->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
 
-    m_recursiveBox = new QCheckBox(QStringLiteral("包含子目录"));
+    m_recursiveBox = new QCheckBox;
     m_recursiveBox->setChecked(false);
 
-    auto *thumbBox = new QCheckBox(QStringLiteral("缩略图"));
-    thumbBox->setChecked(true);
-    thumbBox->setToolTip(QStringLiteral("图片文件在时间线上显示缩略图，悬停可看大图"));
+    m_thumbBox = new QCheckBox;
+    m_thumbBox->setChecked(true);
 
-    auto *previewCombo = new QComboBox;
-    previewCombo->addItem(QStringLiteral("小预览"), 240);
-    previewCombo->addItem(QStringLiteral("中预览"), 400);
-    previewCombo->addItem(QStringLiteral("大预览"), 560);
-    previewCombo->setCurrentIndex(1); // 默认中号
-    previewCombo->setToolTip(QStringLiteral("悬停预览图的大小"));
+    m_previewCombo = new QComboBox;
+    m_previewCombo->addItem(QString(), 240);
+    m_previewCombo->addItem(QString(), 400);
+    m_previewCombo->addItem(QString(), 560);
+    m_previewCombo->setCurrentIndex(1); // 默认中号
 
-    auto *zoomOutBtn = new QPushButton(QStringLiteral("−"));
-    auto *zoomInBtn  = new QPushButton(QStringLiteral("＋"));
-    zoomOutBtn->setFixedWidth(36);
-    zoomInBtn->setFixedWidth(36);
-    zoomOutBtn->setToolTip(QStringLiteral("缩小时间线"));
-    zoomInBtn->setToolTip(QStringLiteral("放大时间线"));
+    m_zoomOutBtn = new QPushButton(QStringLiteral("−"));
+    m_zoomInBtn  = new QPushButton(QStringLiteral("＋"));
+    m_zoomOutBtn->setFixedWidth(36);
+    m_zoomInBtn->setFixedWidth(36);
 
     m_zoomSlider = new QSlider(Qt::Horizontal);
     m_zoomSlider->setRange(0, kSliderSteps);
     m_zoomSlider->setFixedWidth(150);
     m_zoomSlider->setFixedHeight(22); // 给手柄圆点留足高度，避免上下被裁剪
-    m_zoomSlider->setToolTip(QStringLiteral("缩放"));
 
-    auto *fitBtn = new QPushButton(QStringLiteral("适应全部"));
-    fitBtn->setToolTip(QStringLiteral("缩放平移到刚好显示所有文件"));
+    m_fitBtn = new QPushButton;
 
     m_countLabel = new QLabel;
     m_countLabel->setObjectName("countLabel");
 
-    barLayout->addWidget(openBtn);
+    m_langCombo = new QComboBox;
+    m_langCombo->addItem(QStringLiteral("中文"), QStringLiteral("zh_CN"));
+    m_langCombo->addItem(QStringLiteral("English"), QStringLiteral("en"));
+
+    barLayout->addWidget(m_openBtn);
     barLayout->addWidget(m_pathLabel, 1);
     barLayout->addWidget(m_recursiveBox);
-    barLayout->addWidget(thumbBox);
-    barLayout->addWidget(previewCombo);
+    barLayout->addWidget(m_thumbBox);
+    barLayout->addWidget(m_previewCombo);
     barLayout->addSpacing(8);
-    barLayout->addWidget(zoomOutBtn);
+    barLayout->addWidget(m_zoomOutBtn);
     barLayout->addWidget(m_zoomSlider);
-    barLayout->addWidget(zoomInBtn);
-    barLayout->addWidget(fitBtn);
+    barLayout->addWidget(m_zoomInBtn);
+    barLayout->addWidget(m_fitBtn);
     barLayout->addSpacing(8);
     barLayout->addWidget(m_countLabel);
+    barLayout->addWidget(m_langCombo);
 
     // ---------- 中央时间线 ----------
     m_timeline = new TimelineWidget;
@@ -104,22 +104,22 @@ MainWindow::MainWindow(QWidget *parent)
     layout->addWidget(m_timeline, 1);
     setCentralWidget(central);
 
-    statusBar()->showMessage(QStringLiteral("就绪 —— 滚轮缩放，左键拖拽平移，悬停查看文件详情"));
-
     // ---------- 信号连接 ----------
-    connect(openBtn, &QPushButton::clicked, this, &MainWindow::chooseDirectory);
+    connect(m_openBtn, &QPushButton::clicked, this, &MainWindow::chooseDirectory);
     connect(m_recursiveBox, &QCheckBox::toggled, this, [this] {
         if (!m_currentDir.isEmpty())
             loadDirectory(m_currentDir);
     });
-    connect(thumbBox, &QCheckBox::toggled, m_timeline, &TimelineWidget::setShowThumbnails);
-    connect(previewCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-            [this, previewCombo](int idx) {
-        m_timeline->setPreviewSize(previewCombo->itemData(idx).toInt());
+    connect(m_thumbBox, &QCheckBox::toggled, m_timeline, &TimelineWidget::setShowThumbnails);
+    connect(m_previewCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            [this](int idx) {
+        m_timeline->setPreviewSize(m_previewCombo->itemData(idx).toInt());
     });
-    connect(zoomInBtn,  &QPushButton::clicked, m_timeline, &TimelineWidget::zoomIn);
-    connect(zoomOutBtn, &QPushButton::clicked, m_timeline, &TimelineWidget::zoomOut);
-    connect(fitBtn,     &QPushButton::clicked, m_timeline, &TimelineWidget::fitToContents);
+    connect(m_langCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            [this](int idx) { applyLanguage(m_langCombo->itemData(idx).toString()); });
+    connect(m_zoomInBtn,  &QPushButton::clicked, m_timeline, &TimelineWidget::zoomIn);
+    connect(m_zoomOutBtn, &QPushButton::clicked, m_timeline, &TimelineWidget::zoomOut);
+    connect(m_fitBtn,     &QPushButton::clicked, m_timeline, &TimelineWidget::fitToContents);
     connect(m_timeline, &TimelineWidget::zoomChanged, this, [this](double msPerPixel) {
         m_zoomSlider->blockSignals(true);
         m_zoomSlider->setValue(zoomToSlider(msPerPixel));
@@ -167,9 +167,76 @@ MainWindow::MainWindow(QWidget *parent)
         QFileDialog QListView, QFileDialog QTreeView, QFileDialog QComboBox, QFileDialog QLineEdit {
             background: #ffffff; color: #3c4257; }
     )"));
+
+    // 所有界面文字统一由 retranslateUi 设置（含初始语言）
+    applyLanguage(initialLanguage());
 }
 
 MainWindow::~MainWindow() = default;
+
+QString MainWindow::initialLanguage()
+{
+    const QString saved = QSettings().value(QStringLiteral("language")).toString();
+    if (saved == QLatin1String("zh_CN") || saved == QLatin1String("en"))
+        return saved;
+    // 缺省跟随系统语言：中文系统用中文，其余用英文
+    return QLocale::system().name().startsWith(QLatin1String("zh"))
+        ? QStringLiteral("zh_CN") : QStringLiteral("en");
+}
+
+void MainWindow::applyLanguage(const QString &lang)
+{
+    qApp->removeTranslator(&m_translator);
+    if (lang == QLatin1String("zh_CN")
+        && m_translator.load(QStringLiteral(":/i18n/fileTimeline_zh_CN.qm")))
+        qApp->installTranslator(&m_translator);
+    m_lang = lang;
+    QSettings().setValue(QStringLiteral("language"), lang);
+    retranslateUi();
+}
+
+void MainWindow::retranslateUi()
+{
+    setWindowTitle(tr("File Timeline"));
+    m_openBtn->setText(tr("Open Folder"));
+    if (m_currentDir.isEmpty())
+        m_pathLabel->setText(tr("No folder selected"));
+    m_recursiveBox->setText(tr("Include subfolders"));
+    m_thumbBox->setText(tr("Thumbnails"));
+    m_thumbBox->setToolTip(tr("Show image thumbnails on the timeline; hover for a large preview"));
+    m_previewCombo->setItemText(0, tr("Small preview"));
+    m_previewCombo->setItemText(1, tr("Medium preview"));
+    m_previewCombo->setItemText(2, tr("Large preview"));
+    m_previewCombo->setToolTip(tr("Hover preview size"));
+    m_zoomOutBtn->setToolTip(tr("Zoom out"));
+    m_zoomInBtn->setToolTip(tr("Zoom in"));
+    m_zoomSlider->setToolTip(tr("Zoom"));
+    m_fitBtn->setText(tr("Fit All"));
+    m_fitBtn->setToolTip(tr("Zoom and pan to fit all files"));
+    m_langCombo->setToolTip(tr("Interface language"));
+    m_langCombo->blockSignals(true);
+    m_langCombo->setCurrentIndex(m_lang == QLatin1String("zh_CN") ? 0 : 1);
+    m_langCombo->blockSignals(false);
+    if (!m_currentDir.isEmpty())
+        m_countLabel->setText(tr("%1 files").arg(m_timeline->files().size()));
+    refreshStatusBar();
+    m_timeline->update(); // 时间线内文字在绘制时取 tr()，重绘即可
+}
+
+void MainWindow::refreshStatusBar()
+{
+    if (m_currentDir.isEmpty()) {
+        statusBar()->showMessage(
+            tr("Ready - wheel to zoom, drag to pan, hover for file details"));
+    } else if (m_timeline->files().isEmpty()) {
+        statusBar()->showMessage(tr("No files found in this folder"));
+    } else {
+        const QVector<FileItem> &sorted = m_timeline->files();
+        statusBar()->showMessage(tr("Time range: %1  ~  %2")
+            .arg(sorted.first().modified.toString("yyyy-MM-dd HH:mm:ss"),
+                 sorted.last().modified.toString("yyyy-MM-dd HH:mm:ss")));
+    }
+}
 
 double MainWindow::sliderToZoom(int value) const
 {
@@ -192,7 +259,7 @@ void MainWindow::chooseDirectory()
         ? QStandardPaths::writableLocation(QStandardPaths::HomeLocation)
         : m_currentDir;
     const QString dir = QFileDialog::getExistingDirectory(
-        this, QStringLiteral("选择要生成时间线的目录"), start);
+        this, tr("Choose a folder to visualize"), start);
     if (!dir.isEmpty())
         loadDirectory(dir);
 }
@@ -225,14 +292,6 @@ void MainWindow::loadDirectory(const QString &path)
     m_pathLabel->setText(path);
     m_pathLabel->setToolTip(path);
     m_timeline->setFiles(files); // 内部完成排序与自适应视图
-    m_countLabel->setText(QStringLiteral("共 %1 个文件").arg(files.size()));
-
-    const QVector<FileItem> &sorted = m_timeline->files();
-    if (sorted.isEmpty()) {
-        statusBar()->showMessage(QStringLiteral("该目录下没有找到文件"));
-    } else {
-        statusBar()->showMessage(QStringLiteral("时间范围：%1  ~  %2")
-            .arg(sorted.first().modified.toString("yyyy-MM-dd HH:mm:ss"),
-                 sorted.last().modified.toString("yyyy-MM-dd HH:mm:ss")));
-    }
+    m_countLabel->setText(tr("%1 files").arg(files.size()));
+    refreshStatusBar();
 }

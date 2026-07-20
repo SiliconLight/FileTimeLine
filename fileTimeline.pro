@@ -24,6 +24,11 @@ RESOURCES += \
 
 RC_FILE = resources/fileTimeline.rc
 
+# 翻译：lrelease 自动编译 .ts 并嵌入到 :/i18n/
+TRANSLATIONS += translations/fileTimeline_zh_CN.ts
+CONFIG += lrelease
+CONFIG += embed_translations
+
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
