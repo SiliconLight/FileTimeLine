@@ -9,20 +9,20 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
-    main.cpp \
-    mainwindow.cpp \
-    rawpreview.cpp \
-    timelinewidget.cpp
+    src/main.cpp \
+    src/mainwindow.cpp \
+    src/rawpreview.cpp \
+    src/timelinewidget.cpp
 
 HEADERS += \
-    mainwindow.h \
-    rawpreview.h \
-    timelinewidget.h
+    src/mainwindow.h \
+    src/rawpreview.h \
+    src/timelinewidget.h
 
 RESOURCES += \
-    resources.qrc
+    resources/resources.qrc
 
-RC_FILE = fileTimeline.rc
+RC_FILE = resources/fileTimeline.rc
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
